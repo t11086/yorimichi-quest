@@ -97,8 +97,15 @@
   .entry {
     background: #fffdf7; border: 1.5px solid #e3d7bd; border-radius: 14px;
     padding: 12px 14px; margin-bottom: 10px;
+    position: relative;
   }
-  .entry .etext { font-size: 14px; line-height: 1.5; }
+  .entry .etext { font-size: 14px; line-height: 1.5; padding-right: 52px; }
+  .btn-undo {
+    position: absolute; top: 10px; right: 10px;
+    border: 1px solid #ddcfb4; border-radius: 8px; background: #f3ecdc;
+    font-family: inherit; font-size: 11px; color: #8a7a64; font-weight: bold;
+    padding: 4px 8px; cursor: pointer;
+  }
   .entry img { width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
   .empty { text-align: center; color: #b3a184; font-size: 13px; margin-top: 48px; line-height: 2; }
 
@@ -221,7 +228,7 @@ const QUESTS = [
   { id: 10, cat: 'totonoe',  place: 'どこでも', text: '財布からレシートを全部出す' },
   { id: 11, cat: 'totonoe',  place: 'どこでも', text: 'スマホの写真を、いらないもの1枚だけ消す' },
   { id: 12, cat: 'totonoe',  place: 'いえ',    text: '机の上のものをひとつ、家の中の正しい場所に帰す' },
-  { id: 13, cat: 'totonoe',  place: 'いえ',    text: '手持ちのペンが全部書けるか試して、書けないやつを捨てる' },
+  { id: 13, cat: 'totonoe',  place: 'いえ',    text: '手持ちのペン5本を書けるか試して、書けない・要らないものを捨てる' },
   { id: 14, cat: 'kaku',     place: 'どこでも', text: '猫の絵を描く' },
   { id: 15, cat: 'kaku',     place: 'どこでも', text: '利き手じゃないほうの手で自分の名前を書く' },
   { id: 16, cat: 'kaku',     place: 'どこでも', text: '目をつぶって象の絵を描く' },
@@ -572,7 +579,8 @@ function renderAlbum() {
     return;
   }
   let lastDate = '';
-  [...S.log].reverse().forEach(entry => {
+  [...S.log].reverse().forEach((entry, ri) => {
+    const logIndex = S.log.length - 1 - ri;
     const q = byId(entry.id);
     if (!q) return;                      // 廃止クエストのログはスキップ
     const d = new Date(entry.ts);
@@ -587,7 +595,7 @@ function renderAlbum() {
     const emoji = q.cat ? CATS[q.cat].emoji : '✨';
     const div = document.createElement('div');
     div.className = 'entry';
-    div.innerHTML = `<p class="etext">${emoji} ${q.text}</p>`;
+    div.innerHTML = `<p class="etext">${emoji} ${q.text}</p><button class="btn-undo" data-index="${logIndex}">戻す</button>`;
     if (entry.tanka) {
       const tp = document.createElement('div');
       tp.className = 'tanka';
@@ -612,6 +620,36 @@ function renderAlbum() {
     list.appendChild(div);
   });
 }
+
+// 完了を取り消す（デバッグ用）: ログから消し、同日ならデッキにも戻す
+function undoEntry(logIndex) {
+  const entry = S.log[logIndex];
+  if (!entry) return;
+  const q = byId(entry.id);
+  S.log.splice(logIndex, 1);
+  const di = S.doneToday.indexOf(entry.id);
+  if (di !== -1) S.doneToday.splice(di, 1);
+  if (q && q.chainId) {
+    // 最新ステップの取り消しならチェーンを1歩巻き戻す
+    if ((S.chains[q.chainId] || 0) === q.stepIndex + 1) {
+      S.chains[q.chainId] = q.stepIndex;
+      const nextId = `${q.chainId}-${q.stepIndex + 1}`;
+      S.order = S.order.filter(x => x !== nextId);
+      if (!S.order.includes(entry.id)) {
+        S.order.splice(Math.floor(Math.random() * (S.order.length + 1)), 0, entry.id);
+      }
+      // 巻き戻しで消したステップが場に出ていたら引き直す
+      if (S.slot === nextId) { S.slot = draw(S); renderCard(); }
+    }
+  }
+  save();
+  renderAlbum();
+  updateBadge();
+}
+document.querySelector('#albumlist').addEventListener('click', e => {
+  const btn = e.target.closest('.btn-undo');
+  if (btn) undoEntry(Number(btn.dataset.index));
+});
 
 // ---- タブ ----
 function showTab(name) {

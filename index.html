@@ -22,7 +22,7 @@
   header h1 { font-size: 22px; letter-spacing: 2px; }
 
   .stage { position: relative; height: min(62vh, 500px); margin-top: 20px; }
-  .hint { text-align: center; font-size: 11px; color: #b3a184; letter-spacing: 1px; margin-top: 44px; }
+  .hint { text-align: center; font-size: 11px; color: #b3a184; letter-spacing: 1px; margin-top: 52px; }
 
   /* 完了スタンプ（チェーン完成時だけ出る軽い演出） */
   .toast {
@@ -54,8 +54,8 @@
     -webkit-user-select: none;
   }
   .card.back { pointer-events: none; background: #fbf6e9; }
-  .card.b1 { transform: translateY(14px) rotate(-2.5deg) scale(.985); }
-  .card.b2 { transform: translateY(28px) rotate(2deg) scale(.97); }
+  .card.b1 { transform: translate(-14px, 16px) rotate(-4deg); }
+  .card.b2 { transform: translate(16px, 32px) rotate(3.5deg); }
 
   .qtext {
     flex: 1; display: flex; align-items: center; justify-content: center;
@@ -117,11 +117,11 @@
   nav button .ico { display: block; font-size: 20px; }
 
   /* modal */
-  #modal, #reveal {
+  #modal, #reveal, #fortune {
     position: fixed; inset: 0; background: rgba(74,63,53,.45);
     display: flex; align-items: center; justify-content: center; z-index: 10; padding: 24px;
   }
-  #modal[hidden], #reveal[hidden] { display: none; }
+  #modal[hidden], #reveal[hidden], #fortune[hidden] { display: none; }
   .tanka { font-size: 17px; line-height: 2.1; text-align: center; font-weight: bold; margin: 10px 0 14px; }
   .tanka p { margin: 0; }
   .mbox {
@@ -183,6 +183,13 @@
     <button class="m-plain" id="m-plain">これで完了</button>
   </div>
 </div>
+<div id="fortune" hidden>
+  <div class="mbox">
+    <div class="stamp">手相占い</div>
+    <p class="mq" id="fortune-text"></p>
+    <button class="m-plain" id="f-close">とじる</button>
+  </div>
+</div>
 <div id="reveal" hidden>
   <div class="mbox">
     <div class="stamp">短歌、完成。</div>
@@ -218,7 +225,11 @@ const QUESTS = [
   { id: 14, cat: 'kaku',     place: 'どこでも', text: '猫の絵を描く' },
   { id: 15, cat: 'kaku',     place: 'どこでも', text: '利き手じゃないほうの手で自分の名前を書く' },
   { id: 16, cat: 'kaku',     place: 'どこでも', text: '目をつぶって象の絵を描く' },
-  { id: 21, cat: 'miru',     place: 'どこでも', text: '左手の感情線は、中指と人差し指の間までのびていますか？' },
+  { id: 21, cat: 'miru',     place: 'どこでも', text: '左手の感情線は、中指と人差し指の間までのびていますか？',
+    choices: [
+      { label: 'のびてる',   result: 'あなたは愛情深く、いちど好きになったものをずっと大切にする人です。' },
+      { label: 'のびてない', result: 'あなたはクールに見えて、心の奥に熱いものをかくしている人です。' },
+    ] },
   { id: 26, cat: 'tanken',   place: 'そと',    text: '今日の空を写真に1枚撮る' },
   { id: 27, cat: 'yattemiru', place: 'いえ',    text: '飲み物をいつもと違うコップで飲む' },
   { id: 30, cat: 'yattemiru', place: 'いえ',    text: '家の中で、座ったことのない場所に座ってみる' },
@@ -356,10 +367,13 @@ const stageEl = $('#stage');
 
 function cardHTML(q) {
   const haveBtn = q.have ? '<button class="btn-have">🏠 もう家にある</button>' : '';
+  const mainBtns = q.choices
+    ? q.choices.map((c, i) => `<button class="btn-done" data-choice="${i}">${c.label}</button>`).join('')
+    : '<button class="btn-done">やった</button>';
   return `
     <p class="qtext">${q.text}</p>
     <div class="actions">
-      <button class="btn-done">やった！</button>
+      ${mainBtns}
       ${haveBtn}
       <button class="btn-skip">🔄 べつのにする</button>
     </div>`;
@@ -379,7 +393,7 @@ function swapCard(outX, outY, rot) {
   setTimeout(() => {
     renderCard();
     cardEl.style.transition = 'none';
-    cardEl.style.transform = 'translateY(14px) rotate(-2.5deg) scale(.985)';  // 山の1枚目の位置から
+    cardEl.style.transform = 'translate(-14px, 16px) rotate(-4deg)';  // 山の1枚目の位置から
     requestAnimationFrame(() => requestAnimationFrame(() => {
       cardEl.style.transition = 'transform .2s ease-out, opacity .15s';
       cardEl.style.transform = '';
@@ -421,10 +435,25 @@ cardEl.addEventListener('click', e => {
   } else if (e.target.closest('.btn-have')) {
     completeQuest();                     // 買わずに完了
   } else if (e.target.closest('.btn-done')) {
-    if (byId(S.slot).input) openModal(); // 入力があるクエストだけダイアログ
-    else completeQuest();
+    const q = byId(S.slot);
+    if (q.choices) {
+      // 二択クエスト: 選んだ結果（占い）を表示し、アルバムにも残す
+      const c = q.choices[Number(e.target.closest('.btn-done').dataset.choice)];
+      completeQuest(c.result);
+      setTimeout(() => showFortune(c.result), 600);
+    } else if (q.input) {
+      openModal();                       // 入力があるクエストだけダイアログ
+    } else {
+      completeQuest();
+    }
   }
 });
+
+function showFortune(text) {
+  $('#fortune-text').textContent = text;
+  $('#fortune').hidden = false;
+}
+$('#f-close').addEventListener('click', () => { $('#fortune').hidden = true; });
 
 // スワイプでリロール
 let dragStartX = null, dragX = 0;
@@ -467,13 +496,13 @@ function openModal() {
   note.value = '';
   $('#modal').hidden = false;
 }
-function completeQuest() {
+function completeQuest(forcedNote) {
   pending = false;
   $('#modal').hidden = true;
   const id = S.slot;
   const entry = { id, ts: Date.now() };
   const noteEl = $('#modal-note');
-  const noteText = noteEl.hidden ? '' : noteEl.value.trim();
+  const noteText = forcedNote || (noteEl.hidden ? '' : noteEl.value.trim());
   if (noteText) entry.note = noteText;
   noteEl.value = '';
   noteEl.hidden = true;

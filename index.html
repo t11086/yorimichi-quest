@@ -106,11 +106,13 @@
   nav button .ico { display: block; font-size: 20px; }
 
   /* modal */
-  #modal {
+  #modal, #reveal {
     position: fixed; inset: 0; background: rgba(74,63,53,.45);
     display: flex; align-items: center; justify-content: center; z-index: 10; padding: 24px;
   }
-  #modal[hidden] { display: none; }
+  #modal[hidden], #reveal[hidden] { display: none; }
+  .tanka { font-size: 17px; line-height: 2.1; text-align: center; font-weight: bold; margin: 10px 0 14px; }
+  .tanka p { margin: 0; }
   .mbox {
     background: #fffdf7; border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 360px;
     text-align: center; animation: rise .25s ease;
@@ -172,6 +174,14 @@
     <button class="m-plain" id="m-plain">そのまま完了</button>
   </div>
 </div>
+<div id="reveal" hidden>
+  <div class="mbox">
+    <div class="stamp">短歌、完成。</div>
+    <div class="tanka" id="tanka-lines"></div>
+    <p class="mq">いつかの5文字と7文字が、歌になりました。</p>
+    <button class="m-plain" id="r-close">とじる</button>
+  </div>
+</div>
 <input type="file" accept="image/*" id="fileinput" hidden>
 
 <script>
@@ -200,7 +210,6 @@ const QUESTS = [
   { id: 14, cat: 'kaku',     place: 'どこでも', text: '猫の絵を描く' },
   { id: 15, cat: 'kaku',     place: 'どこでも', text: '利き手じゃないほうの手で自分の名前を書く' },
   { id: 16, cat: 'kaku',     place: 'どこでも', text: '目をつぶって象の絵を描く' },
-  { id: 17, cat: 'kaku',     place: 'どこでも', text: '好きな5文字を考える' },
   { id: 21, cat: 'miru',     place: 'どこでも', text: '左手の感情線は、中指と人差し指の間までのびていますか？' },
   { id: 26, cat: 'tanken',   place: 'そと',    text: '今日の空を写真に1枚撮る' },
   { id: 27, cat: 'yattemiru', place: 'いえ',    text: '飲み物をいつもと違うコップで飲む' },
@@ -229,11 +238,19 @@ const CHAINS = [
     { text: '丸く切ったダンボールに、白いポスカで模様を描く' },
     { text: '模様を描いたダンボールをコースターにして、飲み物を飲む' },
   ]},
+  // 5・7・5・7・7 — 完成して初めて短歌だったと気づく
+  { id: 'tanka', steps: [
+    { text: '好きな5文字を考える', input: '好きな5文字' },
+    { text: '好きな7文字を考える', input: '好きな7文字' },
+    { text: '好きな5文字を考える', input: '好きな5文字' },
+    { text: '好きな7文字を考える', input: '好きな7文字' },
+    { text: '好きな7文字を考える', input: '好きな7文字' },
+  ]},
 ];
 const CHAIN_STEPS = {};
 CHAINS.forEach(ch => ch.steps.forEach((st, i) => {
   CHAIN_STEPS[`${ch.id}-${i}`] = {
-    id: `${ch.id}-${i}`, text: st.text, have: !!st.have, cat: null,
+    id: `${ch.id}-${i}`, text: st.text, have: !!st.have, input: st.input, cat: null,
     chainId: ch.id, stepIndex: i, isLast: i === ch.steps.length - 1,
   };
 }));
@@ -469,6 +486,15 @@ function completeQuest(photo) {
       }
     }
     S.order = S.order.filter(x => x !== id);
+    if (cq.chainId === 'tanka' && cq.isLast) {
+      // これまでの「好きな文字」を5-7-5-7-7に並べて一首にする
+      const lines = CHAINS.find(c => c.id === 'tanka').steps.map((_, i) => {
+        const e = [...S.log].reverse().find(en => en.id === 'tanka-' + i && en.note);
+        return e ? e.note : '（　）';
+      });
+      entry.tanka = lines;               // アルバムにも歌として残す
+      setTimeout(() => showTanka(lines), 700);
+    }
   }
   S.slot = draw(S);
   try {
@@ -484,6 +510,18 @@ function completeQuest(photo) {
   swapCard(0, -window.innerHeight * 0.6, -6);   // 完了は上に飛んでいく
   updateBadge();
 }
+function showTanka(lines) {
+  const box = $('#tanka-lines');
+  box.innerHTML = '';
+  lines.forEach(t => {
+    const p = document.createElement('p');
+    p.textContent = t;
+    box.appendChild(p);
+  });
+  $('#reveal').hidden = false;
+}
+$('#r-close').addEventListener('click', () => { $('#reveal').hidden = true; });
+
 $('#m-plain').addEventListener('click', () => completeQuest(null));
 $('#m-photo').addEventListener('click', () => $('#fileinput').click());
 $('#modal').addEventListener('click', e => {
@@ -539,7 +577,16 @@ function renderAlbum() {
     const div = document.createElement('div');
     div.className = 'entry';
     div.innerHTML = `<p class="etext">${emoji} ${q.text}</p>`;
-    if (entry.note) {
+    if (entry.tanka) {
+      const tp = document.createElement('div');
+      tp.className = 'tanka';
+      entry.tanka.forEach(t => {
+        const p = document.createElement('p');
+        p.textContent = t;
+        tp.appendChild(p);
+      });
+      div.appendChild(tp);
+    } else if (entry.note) {
       const np = document.createElement('p');
       np.className = 'enote';
       np.textContent = `「${entry.note}」`;

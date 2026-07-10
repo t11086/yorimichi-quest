@@ -124,11 +124,11 @@
   nav button .ico { display: block; font-size: 20px; }
 
   /* modal */
-  #modal, #reveal, #fortune {
+  #reveal, #fortune {
     position: fixed; inset: 0; background: rgba(74,63,53,.45);
     display: flex; align-items: center; justify-content: center; z-index: 10; padding: 24px;
   }
-  #modal[hidden], #reveal[hidden], #fortune[hidden] { display: none; }
+  #reveal[hidden], #fortune[hidden] { display: none; }
   .tanka { font-size: 17px; line-height: 2.1; text-align: center; font-weight: bold; margin: 10px 0 14px; }
   .tanka p { margin: 0; }
   .mbox {
@@ -184,14 +184,6 @@
 
 <input type="file" id="camerain" accept="image/*" capture="environment" hidden>
 
-<div id="modal" hidden>
-  <div class="mbox">
-    <div class="stamp" id="modal-stamp">クエストクリア！</div>
-    <p class="mq" id="modal-q"></p>
-    <input type="text" class="mnote" id="modal-note" hidden>
-    <button class="m-plain" id="m-plain">これで完了</button>
-  </div>
-</div>
 <div id="fortune" hidden>
   <div class="mbox">
     <div class="stamp">手相占い</div>
@@ -383,11 +375,19 @@ function byId(id) { return CHAIN_STEPS[id] || QUESTS.find(q => q.id === id); }
 // デッキから次の1枚を引く。除外が厳しくて引けなければ段階的にゆるめる
 function draw(s) {
   const isCurrent = id => id === s.slot;
-  const tiers = [
+  const isFortune = id => { const q = byId(id); return !!(q && q.choices); };
+  const base = [
     id => !isCurrent(id) && !s.skipped.includes(id) && !s.doneToday.includes(id),
     id => !isCurrent(id) && !s.doneToday.includes(id),  // スキップ札を再利用
     id => !isCurrent(id),                               // 完了済みも再利用
   ];
+  // いまのカードが占いなら、次は占い以外を優先（占いの連続を防ぐ）
+  const cur = byId(s.slot);
+  const tiers = [];
+  base.forEach(ok => {
+    if (cur && cur.choices) tiers.push(id => ok(id) && !isFortune(id));
+    tiers.push(ok);
+  });
   for (const ok of tiers) {
     const found = s.order.find(ok);
     if (found !== undefined) return found;
@@ -402,6 +402,7 @@ const stageEl = $('#stage');
 
 function cardHTML(q) {
   const haveBtn = q.have ? '<button class="btn-have">🏠 もう家にある</button>' : '';
+  const noteInput = q.input ? `<input type="text" class="mnote card-note" placeholder="${q.input}">` : '';
   const mainBtns = q.choices
     ? q.choices.map((c, i) => `<button class="btn-done" data-choice="${i}">${c.label}</button>`).join('')
     : q.camera
@@ -410,6 +411,7 @@ function cardHTML(q) {
   return `
     <p class="qtext">${q.text}</p>
     <div class="actions">
+      ${noteInput}
       ${mainBtns}
       ${haveBtn}
       <button class="btn-skip">🔄 べつのにする</button>
@@ -479,10 +481,8 @@ cardEl.addEventListener('click', e => {
       showFortune(c.result);
     } else if (q.camera) {
       $('#camerain').click();            // カメラ起動。撮れたら完了
-    } else if (q.input) {
-      openModal();                       // 入力があるクエストだけダイアログ
     } else {
-      completeQuest();
+      completeQuest();                   // 入力欄があればカード上の値を拾う
     }
   }
 });
@@ -524,7 +524,7 @@ $('#f-close').addEventListener('click', () => {
 // スワイプでリロール
 let dragStartX = null, dragX = 0;
 cardEl.addEventListener('pointerdown', e => {
-  if (animating || e.target.closest('button')) return;
+  if (animating || e.target.closest('button, input')) return;
   dragStartX = e.clientX;
   dragX = 0;
   cardEl.setPointerCapture(e.pointerId);
@@ -549,30 +549,13 @@ function dragEnd() {
 cardEl.addEventListener('pointerup', dragEnd);
 cardEl.addEventListener('pointercancel', dragEnd);
 
-// 完了モーダル
-let pending = false;
-function openModal() {
-  pending = true;
-  const q = byId(S.slot);
-  $('#modal-stamp').textContent = q.isLast ? 'なにかが完成した！' : 'クエストクリア！';
-  $('#modal-q').textContent = q.text;
-  const note = $('#modal-note');
-  note.hidden = !q.input;
-  note.placeholder = q.input || '';
-  note.value = '';
-  $('#modal').hidden = false;
-}
 function completeQuest(forcedNote, photo) {
-  pending = false;
-  $('#modal').hidden = true;
   const id = S.slot;
   const entry = { id, ts: Date.now() };
-  const noteEl = $('#modal-note');
-  const noteText = forcedNote || (noteEl.hidden ? '' : noteEl.value.trim());
+  const noteEl = cardEl.querySelector('.card-note');
+  const noteText = forcedNote || (noteEl ? noteEl.value.trim() : '');
   if (noteText) entry.note = noteText;
   if (photo) entry.photo = photo;
-  noteEl.value = '';
-  noteEl.hidden = true;
   S.log.push(entry);
   S.doneToday.push(id);
   const cq = byId(id);
@@ -623,11 +606,6 @@ function showTanka(lines) {
   $('#reveal').hidden = false;
 }
 $('#r-close').addEventListener('click', () => { $('#reveal').hidden = true; });
-
-$('#m-plain').addEventListener('click', () => completeQuest());
-$('#modal').addEventListener('click', e => {
-  if (e.target.id === 'modal') { $('#modal').hidden = true; pending = false; }
-});
 
 // ---- アルバム ----
 function renderAlbum() {

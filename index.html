@@ -24,23 +24,6 @@
   .stage { position: relative; height: min(62vh, 500px); margin-top: 20px; }
   .hint { text-align: center; font-size: 11px; color: #b3a184; letter-spacing: 1px; margin-top: 52px; }
 
-  /* 完了スタンプ（チェーン完成時だけ出る軽い演出） */
-  .toast {
-    position: absolute; left: 50%; top: 34%;
-    font-size: 20px; font-weight: bold; color: #e8703a;
-    border: 3px solid #e8703a; border-radius: 10px; background: #fffdf7;
-    padding: 6px 18px; letter-spacing: 2px; white-space: nowrap;
-    z-index: 6; pointer-events: none;
-    animation: toastpop 1.5s ease forwards;
-  }
-  @keyframes toastpop {
-    0%   { opacity: 0; transform: translate(-50%, -50%) rotate(-6deg) scale(.5); }
-    15%  { opacity: 1; transform: translate(-50%, -50%) rotate(-6deg) scale(1.08); }
-    25%  { transform: translate(-50%, -50%) rotate(-6deg) scale(1); }
-    75%  { opacity: 1; transform: translate(-50%, -50%) rotate(-6deg) scale(1); }
-    100% { opacity: 0; transform: translate(-50%, -60%) rotate(-6deg) scale(1); }
-  }
-
   .card {
     position: absolute; inset: 0;
     background: #fffdf7;
@@ -106,7 +89,17 @@
     font-family: inherit; font-size: 11px; color: #8a7a64; font-weight: bold;
     padding: 4px 8px; cursor: pointer;
   }
-  .entry img { width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
+  .entry img {
+    width: 72px; height: 72px; object-fit: cover;
+    border-radius: 10px; margin-top: 8px; display: block; cursor: pointer;
+  }
+  #lightbox {
+    position: fixed; inset: 0; background: rgba(74,63,53,.8);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 20; padding: 20px; cursor: pointer;
+  }
+  #lightbox[hidden] { display: none; }
+  #lightbox img { max-width: 100%; max-height: 100%; border-radius: 14px; }
   .empty { text-align: center; color: #b3a184; font-size: 13px; margin-top: 48px; line-height: 2; }
 
   /* tabs */
@@ -148,6 +141,13 @@
     background: #fff; color: inherit; margin-bottom: 4px;
   }
   .mnote::placeholder { color: #c9baa0; }
+  .note-ng { border-color: #d95b43 !important; animation: shake .3s; }
+  .note-errmsg { font-size: 12px; color: #d95b43; text-align: center; margin: -4px 0 0; }
+  @keyframes shake {
+    0%, 100% { transform: none; }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
   .enote { font-size: 13px; color: #8a7a64; margin-top: 6px; }
   .mbox button {
     display: block; width: 100%; border: none; border-radius: 12px; font-family: inherit;
@@ -186,7 +186,7 @@
 
 <div id="fortune" hidden>
   <div class="mbox">
-    <div class="stamp">手相占い</div>
+    <div class="stamp" id="fortune-stamp">手相占い</div>
     <p class="mq" id="fortune-text"></p>
     <button class="m-plain" id="f-close">とじる</button>
   </div>
@@ -195,10 +195,10 @@
   <div class="mbox">
     <div class="stamp">短歌、完成。</div>
     <div class="tanka" id="tanka-lines"></div>
-    <p class="mq">いつかの5文字と7文字が、歌になりました。</p>
     <button class="m-plain" id="r-close">とじる</button>
   </div>
 </div>
+<div id="lightbox" hidden><img alt=""></div>
 
 <script>
 // ---- クエストプール（文体ガイド: CLAUDE.md 参照） ----
@@ -215,10 +215,10 @@ const CATS = {
 const QUESTS = [
   { id: 1,  cat: 'hirou',    place: 'そと',    text: 'すべすべの石をひとつ拾う' },
   { id: 2,  cat: 'hirou',    place: 'そと',    text: 'きれいな落ち葉を1枚拾う' },
-  { id: 3,  cat: 'hirou',    place: 'そと',    text: '落ちているゴミをひとつ拾って、捨てる' },
+  { id: 3,  cat: 'hirou',    place: 'いえ',    text: '家の中のいらないものを探して、ゴミ箱に捨てる' },
   { id: 6,  cat: 'tsukuru',  place: 'いえ',    text: '紙飛行機を折る' },
   { id: 7,  cat: 'tsukuru',  place: 'いえ',    text: 'ハサミでアルミホイルを切る' },
-  { id: 9,  cat: 'totonoe',  place: 'いえ',    text: 'いらないものをひとつ捨てる' },
+  { id: 9,  cat: 'totonoe',  place: 'いえ',    text: '包丁を1本研ぐ' },
   { id: 10, cat: 'totonoe',  place: 'どこでも', text: '財布からいらないレシートを出す' },
   { id: 11, cat: 'totonoe',  place: 'どこでも', text: 'スマホの写真を、いらないもの1枚だけ消す' },
   { id: 12, cat: 'totonoe',  place: 'いえ',    text: '机の上のものをひとつ、家の中の正しい場所に帰す' },
@@ -275,7 +275,8 @@ const CHAINS = [
   { id: 'coaster', steps: [
     { text: 'ダンボールを丸く切る' },
     { text: '白いポスカを買ってくる', have: true },
-    { text: '丸く切ったダンボールに、白いポスカで模様を描く' },
+    { text: '丸く切ったダンボールに、白いポスカで模様を描く',
+      finale: { stamp: 'コースターができました' } },
     { text: '模様を描いたダンボールをコースターにして、飲み物を飲む' },
   ]},
   // 5・7・5・7・7 — 完成して初めて短歌だったと気づく
@@ -286,11 +287,50 @@ const CHAINS = [
     { text: '好きな7文字を考える', input: '好きな7文字' },
     { text: '好きな7文字を考える', input: '好きな7文字' },
   ]},
+  { id: 'dukkah', steps: [
+    { text: 'クミンを買ってくる', have: true },
+    { text: 'コリアンダーパウダーを買ってくる', have: true },
+    { text: 'ごまを買ってくる', have: true },
+    { text: 'クミンとコリアンダーとごまを、ぜんぶ混ぜる' },
+    { text: 'パンにオリーブオイルをつけて、この前混ぜたスパイス（デュカといいます）をつけて食べる' },
+  ]},
+  { id: 'minttea', steps: [
+    { text: 'ミントティーのティーバッグを買ってくる', have: true },
+    { text: 'ミントティーに砂糖をどっさり入れて飲む（モロッコの飲み方です）' },
+  ]},
+  { id: 'gokou', steps: [
+    { text: '八角を買ってくる', have: true },
+    { text: 'シナモンを買ってくる', have: true },
+    { text: '花椒を買ってくる', have: true },
+    { text: 'クローブを買ってくる', have: true },
+    { text: 'フェンネルを買ってくる', have: true },
+    { text: '八角・シナモン・花椒・クローブ・フェンネルを、ぜんぶ砕いて混ぜる',
+      finale: { stamp: '五香粉、完成。',
+        text: 'ゆで卵にひとふり。唐揚げの下味にひとつまみ。チャーハンの仕上げにさらり。どれも気楽にどうぞ。' } },
+  ]},
+  { id: 'houjichai', steps: [
+    { text: 'ほうじ茶を買ってくる', have: true },
+    { text: 'シナモンを買ってくる', have: true },
+    { text: 'カルダモンを買ってくる', have: true },
+    { text: 'ほうじ茶をシナモン・カルダモン・牛乳・砂糖と煮て、ほうじ茶チャイにして飲む' },
+  ]},
+  { id: 'tacos', steps: [
+    { text: 'クミンを買ってくる', have: true },
+    { text: 'パプリカパウダーを買ってくる', have: true },
+    { text: 'オレガノを買ってくる', have: true },
+    { text: 'クミンとパプリカパウダーとオレガノを混ぜて、ポテトにかけて食べる（タコススパイスです）' },
+  ]},
+  { id: 'provence', steps: [
+    { text: 'タイムを買ってくる', have: true },
+    { text: 'ローズマリーを買ってくる', have: true },
+    { text: 'オレガノを買ってくる', have: true },
+    { text: 'タイムとローズマリーとオレガノを混ぜて、ポテトにかけて食べる（エルブ・ド・プロヴァンスです）' },
+  ]},
 ];
 const CHAIN_STEPS = {};
 CHAINS.forEach(ch => ch.steps.forEach((st, i) => {
   CHAIN_STEPS[`${ch.id}-${i}`] = {
-    id: `${ch.id}-${i}`, text: st.text, have: !!st.have, input: st.input, cat: null,
+    id: `${ch.id}-${i}`, text: st.text, have: !!st.have, input: st.input, finale: st.finale, cat: null,
     chainId: ch.id, stepIndex: i, isLast: i === ch.steps.length - 1,
   };
 }));
@@ -336,8 +376,9 @@ let S = load();
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
-  if (!s) s = { day: '', order: [], slot: null, skipped: [], doneToday: [], chains: {}, log: [] };
+  if (!s) s = { day: '', order: [], slot: null, skipped: [], doneToday: [], chains: {}, cool: {}, log: [] };
   if (!s.chains) s.chains = {};
+  if (!s.cool) s.cool = {};
   if (Array.isArray(s.slots)) { s.slot = s.slots[0] ?? null; delete s.slots; }  // 旧3枠形式からの移行
   s.order = (s.order || []).filter(id => byId(id));  // 廃止クエストを掃除
   if (s.day !== todayStr()) {
@@ -364,6 +405,9 @@ function load() {
     });
     if (!byId(s.slot)) { s.slot = null; s.slot = draw(s); }
   }
+  // 占いカードはセッションの1枚目には出さない（デッキには残す）
+  const first = byId(s.slot);
+  if (first && first.choices) s.slot = draw(s);
   return s;
 }
 function save() {
@@ -381,11 +425,19 @@ function draw(s) {
     id => !isCurrent(id) && !s.doneToday.includes(id),  // スキップ札を再利用
     id => !isCurrent(id),                               // 完了済みも再利用
   ];
-  // いまのカードが占いなら、次は占い以外を優先（占いの連続を防ぐ）
+  // 占いの次に占い、チェーンの次にチェーンが来ないように優先度をつける
+  const isChainCard = id => { const q = byId(id); return !!(q && q.chainId); };
+  // ステップを完了したばかりのチェーンは、間に数枚はさまるまで出さない
+  const onCooldown = id => { const q = byId(id); return !!(q && q.chainId && (s.cool[q.chainId] || 0) > 0); };
   const cur = byId(s.slot);
+  const avoidTypes = [];
+  if (cur && cur.choices) avoidTypes.push(isFortune);
+  if (cur && cur.chainId) avoidTypes.push(isChainCard);
+  const noAvoid = id => !avoidTypes.some(f => f(id));
   const tiers = [];
   base.forEach(ok => {
-    if (cur && cur.choices) tiers.push(id => ok(id) && !isFortune(id));
+    tiers.push(id => ok(id) && noAvoid(id) && !onCooldown(id));
+    tiers.push(id => ok(id) && !onCooldown(id));
     tiers.push(ok);
   });
   for (const ok of tiers) {
@@ -442,9 +494,15 @@ function swapCard(outX, outY, rot) {
   }, 230);
 }
 
+// カードを1枚消化するたびに、各チェーンのクールダウンを1減らす
+function tickCool(s) {
+  Object.keys(s.cool).forEach(k => { if (s.cool[k] > 0) s.cool[k]--; });
+}
+
 function reroll(dir) {
   if (animating) return;
   S.skipped.push(S.slot);              // 同日中は再登場しない
+  tickCool(S);
   S.slot = draw(S);
   save();
   swapCard(dir * window.innerWidth, 60, dir * 14);
@@ -478,12 +536,61 @@ cardEl.addEventListener('click', e => {
     if (q.choices) {
       // 二択クエスト: 先に結果（占い）を見せて、とじたら完了してカードが飛ぶ
       const c = q.choices[Number(e.target.closest('.btn-done').dataset.choice)];
-      showFortune(c.result);
+      pendingComplete = { note: c.result };
+      showMsg('手相占い', c.result);
     } else if (q.camera) {
       $('#camerain').click();            // カメラ起動。撮れたら完了
+    } else if (q.chainId === 'tanka') {
+      // 短歌: ちょうどの文字数で書けているかチェック
+      const el = cardEl.querySelector('.card-note');
+      const v = el.value.replace(/\s/g, '');
+      const need = q.input.includes('5') ? 5 : 7;
+      const len = [...v].length;
+      if (len !== need) {
+        noteError(el, len === 0 ? `${need}文字、どうぞ` : `${need}文字ちょうどで（いま${len}文字）`);
+        return;
+      }
+      el.value = v;
+      if (q.isLast) {
+        // 完成した一首を先に見せて、とじたらカードが飛ぶ
+        const lines = CHAINS.find(c => c.id === 'tanka').steps.map((_, i) => {
+          if (i === q.stepIndex) return v;
+          const en = [...S.log].reverse().find(x => x.id === 'tanka-' + i && x.note);
+          return en ? en.note : '（　）';
+        });
+        pendingComplete = { tanka: lines };
+        showTanka(lines);
+        return;
+      }
+      completeQuest();
+    } else if (q.finale) {
+      // 完成メッセージ付きステップ: 先にダイアログ、とじたらカードが飛ぶ
+      pendingComplete = {};
+      showMsg(q.finale.stamp, q.finale.text);
     } else {
       completeQuest();                   // 入力欄があればカード上の値を拾う
     }
+  }
+});
+
+// 入力欄のエラー表示（書き直しはじめたら消える）
+function noteError(el, msg) {
+  el.classList.remove('note-ng');
+  void el.offsetWidth;                   // アニメーションを再発火させる
+  el.classList.add('note-ng');
+  let err = cardEl.querySelector('.note-errmsg');
+  if (!err) {
+    err = document.createElement('p');
+    err.className = 'note-errmsg';
+    el.after(err);
+  }
+  err.textContent = msg;
+}
+cardEl.addEventListener('input', e => {
+  if (e.target.classList.contains('card-note')) {
+    e.target.classList.remove('note-ng');
+    const err = cardEl.querySelector('.note-errmsg');
+    if (err) err.remove();
   }
 });
 
@@ -501,24 +608,29 @@ $('#camerain').addEventListener('change', e => {
     cv.height = Math.round(img.height * scale);
     cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
     URL.revokeObjectURL(img.src);
-    completeQuest(null, cv.toDataURL('image/jpeg', 0.72));
+    completeQuest({ photo: cv.toDataURL('image/jpeg', 0.72) });
   };
   img.src = URL.createObjectURL(file);
 });
 
-let pendingFortune = null;
-function showFortune(text) {
-  pendingFortune = text;
-  $('#fortune-text').textContent = text;
+// ダイアログを見てから完了する保留分（占いの結果や短歌など）
+let pendingComplete = null;
+function showMsg(stamp, text) {
+  $('#fortune-stamp').textContent = stamp;
+  $('#fortune-text').textContent = text || '';
+  $('#fortune-text').hidden = !text;
   $('#fortune').hidden = false;
+}
+function flushPending() {
+  if (pendingComplete) {
+    const p = pendingComplete;
+    pendingComplete = null;
+    completeQuest(p);                    // とじてから完了 → カードが飛んでいく
+  }
 }
 $('#f-close').addEventListener('click', () => {
   $('#fortune').hidden = true;
-  if (pendingFortune !== null) {
-    const r = pendingFortune;
-    pendingFortune = null;
-    completeQuest(r);                    // とじてから完了 → カードが飛んでいく
-  }
+  flushPending();
 });
 
 // スワイプでリロール
@@ -549,15 +661,17 @@ function dragEnd() {
 cardEl.addEventListener('pointerup', dragEnd);
 cardEl.addEventListener('pointercancel', dragEnd);
 
-function completeQuest(forcedNote, photo) {
+function completeQuest(opts = {}) {
   const id = S.slot;
   const entry = { id, ts: Date.now() };
   const noteEl = cardEl.querySelector('.card-note');
-  const noteText = forcedNote || (noteEl ? noteEl.value.trim() : '');
+  const noteText = opts.note || (noteEl ? noteEl.value.trim() : '');
   if (noteText) entry.note = noteText;
-  if (photo) entry.photo = photo;
+  if (opts.photo) entry.photo = opts.photo;
+  if (opts.tanka) entry.tanka = opts.tanka;    // アルバムに歌として残す
   S.log.push(entry);
   S.doneToday.push(id);
+  tickCool(S);
   const cq = byId(id);
   if (cq.chainId) {
     // チェーンを1歩進め、次のステップをデッキのランダムな位置に紛れ込ませる
@@ -566,20 +680,10 @@ function completeQuest(forcedNote, photo) {
       if (!cq.isLast) {
         const nextId = `${cq.chainId}-${cq.stepIndex + 1}`;
         S.order.splice(Math.floor(Math.random() * (S.order.length + 1)), 0, nextId);
+        S.cool[cq.chainId] = 3;          // 次のステップは3枚はさむまで出さない
       }
     }
     S.order = S.order.filter(x => x !== id);
-    if (cq.chainId === 'tanka' && cq.isLast) {
-      // これまでの「好きな文字」を5-7-5-7-7に並べて一首にする
-      const lines = CHAINS.find(c => c.id === 'tanka').steps.map((_, i) => {
-        const e = [...S.log].reverse().find(en => en.id === 'tanka-' + i && en.note);
-        return e ? e.note : '（　）';
-      });
-      entry.tanka = lines;               // アルバムにも歌として残す
-      setTimeout(() => showTanka(lines), 700);
-    } else if (cq.isLast) {
-      setTimeout(() => showToast('なにかが完成した！'), 500);
-    }
   }
   S.slot = draw(S);
   save();
@@ -588,13 +692,6 @@ function completeQuest(forcedNote, photo) {
   updateBadge();
 }
 
-function showToast(text) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = text;
-  stageEl.appendChild(t);
-  setTimeout(() => t.remove(), 1600);
-}
 function showTanka(lines) {
   const box = $('#tanka-lines');
   box.innerHTML = '';
@@ -605,7 +702,10 @@ function showTanka(lines) {
   });
   $('#reveal').hidden = false;
 }
-$('#r-close').addEventListener('click', () => { $('#reveal').hidden = true; });
+$('#r-close').addEventListener('click', () => {
+  $('#reveal').hidden = true;
+  flushPending();
+});
 
 // ---- アルバム ----
 function renderAlbum() {
@@ -686,8 +786,14 @@ function undoEntry(logIndex) {
 }
 document.querySelector('#albumlist').addEventListener('click', e => {
   const btn = e.target.closest('.btn-undo');
-  if (btn) undoEntry(Number(btn.dataset.index));
+  if (btn) { undoEntry(Number(btn.dataset.index)); return; }
+  if (e.target.tagName === 'IMG') {
+    // 写真タップで拡大表示
+    $('#lightbox img').src = e.target.src;
+    $('#lightbox').hidden = false;
+  }
 });
+$('#lightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
 
 // ---- タブ ----
 function showTab(name) {

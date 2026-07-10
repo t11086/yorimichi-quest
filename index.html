@@ -182,6 +182,8 @@
   </nav>
 </div>
 
+<input type="file" id="camerain" accept="image/*" capture="environment" hidden>
+
 <div id="modal" hidden>
   <div class="mbox">
     <div class="stamp" id="modal-stamp">クエストクリア！</div>
@@ -220,28 +222,48 @@ const CATS = {
 };
 const QUESTS = [
   { id: 1,  cat: 'hirou',    place: 'そと',    text: 'すべすべの石をひとつ拾う' },
-  { id: 2,  cat: 'hirou',    place: 'そと',    text: 'きれいな落ち葉を1枚拾って、本にはさむ' },
+  { id: 2,  cat: 'hirou',    place: 'そと',    text: 'きれいな落ち葉を1枚拾う' },
   { id: 3,  cat: 'hirou',    place: 'そと',    text: '落ちているゴミをひとつ拾って、捨てる' },
-  { id: 6,  cat: 'tsukuru',  place: 'いえ',    text: '紙飛行機を折って、部屋の端から端まで飛ばす' },
-  { id: 7,  cat: 'tsukuru',  place: 'いえ',    text: 'アルミホイルで、できるだけまんまるの球を作る' },
+  { id: 6,  cat: 'tsukuru',  place: 'いえ',    text: '紙飛行機を折る' },
+  { id: 7,  cat: 'tsukuru',  place: 'いえ',    text: 'ハサミでアルミホイルを切る' },
   { id: 9,  cat: 'totonoe',  place: 'いえ',    text: 'いらないものをひとつ捨てる' },
-  { id: 10, cat: 'totonoe',  place: 'どこでも', text: '財布からレシートを全部出す' },
+  { id: 10, cat: 'totonoe',  place: 'どこでも', text: '財布からいらないレシートを出す' },
   { id: 11, cat: 'totonoe',  place: 'どこでも', text: 'スマホの写真を、いらないもの1枚だけ消す' },
   { id: 12, cat: 'totonoe',  place: 'いえ',    text: '机の上のものをひとつ、家の中の正しい場所に帰す' },
-  { id: 13, cat: 'totonoe',  place: 'いえ',    text: '手持ちのペン5本を書けるか試して、書けない・要らないものを捨てる' },
-  { id: 14, cat: 'kaku',     place: 'どこでも', text: '猫の絵を描く' },
-  { id: 15, cat: 'kaku',     place: 'どこでも', text: '利き手じゃないほうの手で自分の名前を書く' },
-  { id: 16, cat: 'kaku',     place: 'どこでも', text: '目をつぶって象の絵を描く' },
+  { id: 13, cat: 'totonoe',  place: 'いえ',    text: '手持ちのペン5本を書けるか試す' },
+  { id: 14, cat: 'kaku',     place: 'どこでも', text: '左を向いた猫の絵を描く' },
+  { id: 15, cat: 'kaku',     place: 'どこでも', text: '自分の名前の1文字目をできるだけ丁寧に書く' },
+  { id: 16, cat: 'kaku',     place: 'どこでも', text: '首をかしげた猫の絵を描く' },
   { id: 21, cat: 'miru',     place: 'どこでも', text: '左手の感情線は、中指と人差し指の間までのびていますか？',
     choices: [
       { label: 'のびてる',   result: 'あなたは愛情深く、いちど好きになったものをずっと大切にする人です。' },
       { label: 'のびてない', result: 'あなたはクールに見えて、心の奥に熱いものをかくしている人です。' },
     ] },
-  { id: 26, cat: 'tanken',   place: 'そと',    text: '今日の空を写真に1枚撮る' },
-  { id: 27, cat: 'yattemiru', place: 'いえ',    text: '飲み物をいつもと違うコップで飲む' },
-  { id: 30, cat: 'yattemiru', place: 'いえ',    text: '家の中で、座ったことのない場所に座ってみる' },
+  { id: 22, cat: 'miru',     place: 'どこでも', text: '右手のまんなかに、手首から中指へのびる縦線はありますか？',
+    choices: [
+      { label: 'ある', result: 'あなたは自分の道をゆく人です。まわりの声は、いいBGMになります。' },
+      { label: 'ない', result: 'あなたは風まかせで生きられる人です。それがいちばん遠くまで行けます。' },
+    ] },
+  { id: 23, cat: 'miru',     place: 'どこでも', text: '左手の頭脳線（まんなかの線）は、まっすぐ？下にカーブ？',
+    choices: [
+      { label: 'まっすぐ', result: 'あなたは現実派です。買い物で失敗しないタイプです。' },
+      { label: 'カーブ',   result: 'あなたは夢見る人です。ときどき、ここではない場所を見ています。' },
+    ] },
+  { id: 24, cat: 'miru',     place: 'どこでも', text: '両手の指を組んでみてください。上にくる親指はどっち？',
+    choices: [
+      { label: 'ひだり', result: 'あなたは直感の人です。最初のひらめきが、だいたい正解です。' },
+      { label: 'みぎ',   result: 'あなたは理屈の人です。説明書をちゃんと読む、えらい側の人です。' },
+    ] },
+  { id: 25, cat: 'miru',     place: 'どこでも', text: '右手の小指は、薬指の第一関節より長いですか？',
+    choices: [
+      { label: 'ながい',   result: 'あなたは話す才能の持ち主です。今日のひとことが、誰かに残ります。' },
+      { label: 'みじかい', result: 'あなたは聞き上手です。みんな、ほんとうはあなたに話したいのです。' },
+    ] },
+  { id: 26, cat: 'tanken',   place: 'そと',    text: '今日履いている靴の写真を撮る', camera: true },
+  { id: 27, cat: 'yattemiru', place: 'いえ',    text: '温かいお茶を淹れる' },
+  { id: 30, cat: 'yattemiru', place: 'いえ',    text: '床に寝転んで大の字で目をつぶる' },
   { id: 32, cat: 'yattemiru', place: 'いえ',    text: '本を1冊選ぶ', input: '本のタイトル' },
-  { id: 34, cat: 'yattemiru', place: 'どこでも', text: 'かばんのポケットの中身を全部出して、並べる' },
+  { id: 34, cat: 'yattemiru', place: 'どこでも', text: 'かばんのポケットの中身を出す' },
   { id: 35, cat: 'yattemiru', place: 'どこでも', text: '立ち上がってかかと上げを10回する' },
   { id: 36, cat: 'yattemiru', place: 'いえ',    text: '口の中で舌回しをする' },
 ];
@@ -334,6 +356,12 @@ function load() {
     s.slot = null;
     s.slot = draw(s);
   } else {
+    // 同日中のアップデート対応: 新しく追加されたクエストをデッキに紛れ込ませる
+    QUESTS.forEach(q => {
+      if (!s.order.includes(q.id)) {
+        s.order.splice(Math.floor(Math.random() * (s.order.length + 1)), 0, q.id);
+      }
+    });
     // 同日中のアップデート対応: 進行中チェーンの現在ステップがデッキに無ければ紛れ込ませる
     CHAINS.forEach(ch => {
       const step = s.chains[ch.id] || 0;
@@ -376,6 +404,8 @@ function cardHTML(q) {
   const haveBtn = q.have ? '<button class="btn-have">🏠 もう家にある</button>' : '';
   const mainBtns = q.choices
     ? q.choices.map((c, i) => `<button class="btn-done" data-choice="${i}">${c.label}</button>`).join('')
+    : q.camera
+    ? '<button class="btn-done btn-camera">📷 しゃしんを撮る</button>'
     : '<button class="btn-done">やった</button>';
   return `
     <p class="qtext">${q.text}</p>
@@ -444,10 +474,11 @@ cardEl.addEventListener('click', e => {
   } else if (e.target.closest('.btn-done')) {
     const q = byId(S.slot);
     if (q.choices) {
-      // 二択クエスト: 選んだ結果（占い）を表示し、アルバムにも残す
+      // 二択クエスト: 先に結果（占い）を見せて、とじたら完了してカードが飛ぶ
       const c = q.choices[Number(e.target.closest('.btn-done').dataset.choice)];
-      completeQuest(c.result);
-      setTimeout(() => showFortune(c.result), 600);
+      showFortune(c.result);
+    } else if (q.camera) {
+      $('#camerain').click();            // カメラ起動。撮れたら完了
     } else if (q.input) {
       openModal();                       // 入力があるクエストだけダイアログ
     } else {
@@ -456,11 +487,39 @@ cardEl.addEventListener('click', e => {
   }
 });
 
+// カメラクエスト: 撮影した写真を縮小してアルバムに残し、そのまま完了
+$('#camerain').addEventListener('change', e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const max = 640;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(img.width * scale);
+    cv.height = Math.round(img.height * scale);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(img.src);
+    completeQuest(null, cv.toDataURL('image/jpeg', 0.72));
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+let pendingFortune = null;
 function showFortune(text) {
+  pendingFortune = text;
   $('#fortune-text').textContent = text;
   $('#fortune').hidden = false;
 }
-$('#f-close').addEventListener('click', () => { $('#fortune').hidden = true; });
+$('#f-close').addEventListener('click', () => {
+  $('#fortune').hidden = true;
+  if (pendingFortune !== null) {
+    const r = pendingFortune;
+    pendingFortune = null;
+    completeQuest(r);                    // とじてから完了 → カードが飛んでいく
+  }
+});
 
 // スワイプでリロール
 let dragStartX = null, dragX = 0;
@@ -503,7 +562,7 @@ function openModal() {
   note.value = '';
   $('#modal').hidden = false;
 }
-function completeQuest(forcedNote) {
+function completeQuest(forcedNote, photo) {
   pending = false;
   $('#modal').hidden = true;
   const id = S.slot;
@@ -511,6 +570,7 @@ function completeQuest(forcedNote) {
   const noteEl = $('#modal-note');
   const noteText = forcedNote || (noteEl.hidden ? '' : noteEl.value.trim());
   if (noteText) entry.note = noteText;
+  if (photo) entry.photo = photo;
   noteEl.value = '';
   noteEl.hidden = true;
   S.log.push(entry);

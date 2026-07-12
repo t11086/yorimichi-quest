@@ -3,14 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>よりみちクエスト</title>
+<title>Whim</title>
+<!-- フォントのみ外部依存の例外（CLAUDE.md 技術方針参照）。オフライン時はシステムの手書き系に落ちる -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Zen+Kurenaido&display=swap" rel="stylesheet">
 <style>
+  /* 韓国の감성手帳アプリ風: 白い方眼紙・手書き文字・マスキングテープ・モノクロ+差し色1色 */
+  :root {
+    --paper: #fffefa;
+    --bg: #f4f3ee;
+    --ink: #33312c;
+    --sub: #9b978e;
+    --line: #dcd9cf;
+    --accent: #5c74a8;           /* くすみブルー */
+    --bad: #cf5f4a;
+    --hand: "Caveat", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;   /* 英語の手書き */
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { height: 100%; }
   body {
-    font-family: "Hiragino Maru Gothic ProN", "ヒラギノ丸ゴ ProN", "BIZ UDGothic", "Yu Gothic", sans-serif;
-    background: #f7f1e3;
-    color: #4a3f35;
+    /* 日本語の手書き感: Zen Kurenaido(Google Fonts)。オフライン時はクレー(Mac)→教科書体(Win)→丸ゴ(iOS) */
+    font-family: "Zen Kurenaido", "Klee", "YuKyokasho", "Yu Kyokasho", "UD デジタル 教科書体 N-R", "Hiragino Maru Gothic ProN", sans-serif;
+    background: var(--bg);
+    background-image: radial-gradient(#dedbd1 1px, transparent 1.2px);   /* ドット方眼 */
+    background-size: 22px 22px;
+    color: var(--ink);
     min-height: 100%;
     display: flex;
     flex-direction: column;
@@ -18,148 +36,202 @@
   }
   #app { width: 100%; max-width: 480px; padding: 16px 16px 96px; }
 
-  header { text-align: center; padding: 8px 0 4px; }
-  header h1 { font-size: 22px; letter-spacing: 2px; }
+  header { text-align: center; padding: 10px 0 0; }
+  header h1 { transform: rotate(-2deg); }
+  header h1 svg { height: 30px; width: auto; display: block; margin: 0 auto; color: var(--ink); }
+  header .tagline { font-size: 10px; color: var(--sub); letter-spacing: 3px; margin-top: 3px; }
 
-  .stage { position: relative; height: min(62vh, 500px); margin-top: 20px; }
-  .hint { text-align: center; font-size: 11px; color: #b3a184; letter-spacing: 1px; margin-top: 52px; }
+  .stage { position: relative; height: min(62vh, 500px); margin-top: 26px; }
+  .hint { text-align: center; font-size: 11px; color: var(--sub); letter-spacing: 2px; margin-top: 48px; }
 
   .card {
     position: absolute; inset: 0;
-    background: #fffdf7;
-    border: 1.5px solid #e3d7bd;
-    border-radius: 20px;
-    padding: 24px 20px 20px;
-    box-shadow: 0 4px 0 #e3d7bd;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 32px 20px 20px;
+    box-shadow: 0 3px 14px rgba(51,49,44,.08);
     display: flex; flex-direction: column;
     touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
   }
-  .card.back { pointer-events: none; background: #fbf6e9; }
+  /* マスキングテープ */
+  .card::before {
+    content: ""; position: absolute; top: -9px; left: 50%; width: 78px; height: 22px;
+    transform: translateX(-50%) rotate(-3deg);
+    background: rgba(244, 226, 138, .85);
+    box-shadow: 0 1px 2px rgba(51,49,44,.08);
+  }
+  .card.back { pointer-events: none; background: #fbfaf4; }
   .card.b1 { transform: translate(-14px, 16px) rotate(-4deg); }
+  .card.b1::before { background: rgba(186, 203, 232, .85); transform: translateX(-50%) rotate(2deg); }
   .card.b2 { transform: translate(16px, 32px) rotate(3.5deg); }
+  .card.b2::before { background: rgba(240, 203, 213, .85); }
 
   .qtext {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    text-align: center; font-size: 24px; line-height: 1.8; font-weight: bold; margin: 0 4px;
+    text-align: center; font-size: 23px; line-height: 1.9; font-weight: 600; margin: 0 4px;
   }
+  .qtext.small { font-size: 19px; }
 
-  .actions { display: flex; flex-direction: column; gap: 10px; }
-  .btn-skip, .btn-done {
-    border: none; border-radius: 12px; font-family: inherit; font-size: 14px;
-    padding: 15px 0; cursor: pointer; font-weight: bold;
+  /* スパイス申告の選択チップ */
+  .chips {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    margin-bottom: 14px; overflow-y: auto;
   }
-  .btn-skip {
-    background: #f3ecdc; color: #8a7a64; box-shadow: 0 2px 0 #ddcfb4;
+  .chip {
+    border: 1px solid var(--line); border-radius: 6px; background: var(--paper);
+    font-family: inherit; font-size: 13px; font-weight: 600; color: #77746b;
+    padding: 8px 12px; cursor: pointer;
   }
+  .chip.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+  .actions { display: flex; flex-direction: column; gap: 12px; }
   .btn-done {
-    background: #e8703a; color: #fff; box-shadow: 0 2px 0 #c05a2b; letter-spacing: 2px; font-size: 16px;
+    border: none; border-radius: 8px; font-family: inherit;
+    background: var(--ink); color: var(--paper);
+    font-size: 15px; font-weight: 600; letter-spacing: 6px; text-indent: 6px;
+    padding: 14px 0; cursor: pointer;
+  }
+  .btn-done:active { transform: translateY(1px); opacity: .85; }
+  .btn-skip {
+    border: none; background: none; font-family: inherit;
+    font-size: 13px; color: var(--sub); padding: 4px 0; cursor: pointer;
+    text-decoration: underline wavy #c9c5ba; text-underline-offset: 5px;
   }
   .btn-have {
-    border: 1.5px dashed #d5c6a8; border-radius: 12px; font-family: inherit; font-size: 13px;
-    padding: 12px 0; cursor: pointer; font-weight: bold;
-    background: none; color: #8a7a64;
+    border: 1px dashed #c3bfb4; border-radius: 8px; font-family: inherit; font-size: 13px;
+    padding: 12px 0; cursor: pointer; font-weight: 600;
+    background: none; color: #77746b;
   }
-  .btn-skip:active, .btn-done:active { transform: translateY(2px); box-shadow: none; }
 
-  /* emoji burst */
+  /* 完了のキラキラ（手描き記号） */
   .burst { position: absolute; left: 50%; top: 38%; pointer-events: none; z-index: 5; }
   .burst span {
-    position: absolute; font-size: 22px; animation: pop .8s ease-out forwards;
+    position: absolute; font-size: 18px; font-weight: bold; color: var(--accent);
+    animation: pop .8s ease-out forwards;
   }
+  .burst span:nth-child(even) { color: #d9a23a; font-size: 14px; }
   @keyframes pop {
     0% { transform: translate(0,0) scale(.4); opacity: 1; }
     100% { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; }
   }
 
   /* album */
-  .album-head { text-align: center; margin: 16px 0 4px; font-size: 14px; color: #8a7a64; }
-  .album-head b { font-size: 22px; color: #4a3f35; }
-  .datelabel { font-size: 12px; color: #b3a184; margin: 18px 4px 6px; letter-spacing: 1px; }
+  .album-head { text-align: center; margin: 18px 0 4px; font-size: 13px; color: var(--sub); letter-spacing: 1px; }
+  .album-head b { font-family: var(--hand); font-size: 26px; color: var(--ink); margin: 0 3px; }
+  .datelabel { font-size: 11px; color: var(--sub); letter-spacing: 2px; margin: 20px 4px 8px; }
+  .datelabel::before { content: "✧ "; color: var(--accent); }
   .entry {
-    background: #fffdf7; border: 1.5px solid #e3d7bd; border-radius: 14px;
-    padding: 12px 14px; margin-bottom: 10px;
+    background: var(--paper); border: 1px solid #e2dfd5; border-radius: 4px;
+    padding: 12px 14px; margin-bottom: 8px;
     position: relative;
+    box-shadow: 0 1px 4px rgba(51,49,44,.04);
   }
-  .entry .etext { font-size: 14px; line-height: 1.5; padding-right: 52px; }
+  .entry .etext { font-size: 14px; line-height: 1.6; padding-right: 44px; }
+  .entry .etext::before { content: "✓ "; color: var(--accent); font-weight: bold; }
   .btn-undo {
-    position: absolute; top: 10px; right: 10px;
-    border: 1px solid #ddcfb4; border-radius: 8px; background: #f3ecdc;
-    font-family: inherit; font-size: 11px; color: #8a7a64; font-weight: bold;
-    padding: 4px 8px; cursor: pointer;
+    position: absolute; top: 10px; right: 12px;
+    border: none; background: none;
+    font-family: inherit; font-size: 11px; color: var(--sub);
+    text-decoration: underline; text-underline-offset: 3px;
+    padding: 2px; cursor: pointer;
   }
+  /* 写真はポラロイド風 */
   .entry img {
-    width: 72px; height: 72px; object-fit: cover;
-    border-radius: 10px; margin-top: 8px; display: block; cursor: pointer;
+    width: 88px; height: 88px; object-fit: cover;
+    border: 5px solid #fff; outline: 1px solid var(--line); border-radius: 2px;
+    transform: rotate(-2deg); box-shadow: 0 2px 6px rgba(51,49,44,.12);
+    margin-top: 10px; display: block; cursor: pointer;
   }
   #lightbox {
-    position: fixed; inset: 0; background: rgba(74,63,53,.8);
+    position: fixed; inset: 0; background: rgba(40,38,34,.85);
     display: flex; align-items: center; justify-content: center;
-    z-index: 20; padding: 20px; cursor: pointer;
+    z-index: 20; padding: 24px; cursor: pointer;
   }
   #lightbox[hidden] { display: none; }
-  #lightbox img { max-width: 100%; max-height: 100%; border-radius: 14px; }
-  .empty { text-align: center; color: #b3a184; font-size: 13px; margin-top: 48px; line-height: 2; }
+  #lightbox img { max-width: 100%; max-height: 100%; border: 8px solid #fff; border-radius: 2px; }
+  .empty { text-align: center; color: var(--sub); font-size: 13px; margin-top: 48px; line-height: 2; }
+  #resetall {
+    display: block; margin: 32px auto 8px;
+    border: none; background: none; font-family: inherit;
+    font-size: 11px; color: var(--sub); text-decoration: underline; cursor: pointer;
+  }
 
   /* tabs */
   nav {
     position: fixed; bottom: 0; left: 0; right: 0;
     display: flex; justify-content: center; gap: 0;
-    background: #fffdf7; border-top: 1.5px solid #e3d7bd;
-    padding: 6px 0 calc(8px + env(safe-area-inset-bottom));
+    background: rgba(255,254,250,.95); border-top: 1px solid #e2dfd5;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
   }
   nav button {
     flex: 1; max-width: 240px; background: none; border: none; font-family: inherit;
-    font-size: 13px; color: #b3a184; padding: 8px 0; cursor: pointer; font-weight: bold;
+    font-size: 12px; color: #b8b4a9; padding: 6px 0; cursor: pointer; font-weight: 600;
   }
-  nav button.active { color: #e8703a; }
-  nav button .ico { display: block; font-size: 20px; }
+  nav button.active { color: var(--ink); }
+  nav button svg { display: block; width: 21px; height: 21px; margin: 0 auto 3px; }
 
   /* modal */
   #reveal, #fortune {
-    position: fixed; inset: 0; background: rgba(74,63,53,.45);
+    position: fixed; inset: 0; background: rgba(40,38,34,.5);
     display: flex; align-items: center; justify-content: center; z-index: 10; padding: 24px;
   }
   #reveal[hidden], #fortune[hidden] { display: none; }
-  .tanka { font-size: 17px; line-height: 2.1; text-align: center; font-weight: bold; margin: 10px 0 14px; }
+  .tanka { font-size: 17px; line-height: 2.1; text-align: center; font-weight: 600; margin: 10px 0 14px; }
   .tanka p { margin: 0; }
   .mbox {
-    background: #fffdf7; border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 360px;
+    position: relative;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+    padding: 28px 20px 22px; width: 100%; max-width: 360px;
     text-align: center; animation: rise .25s ease;
+    box-shadow: 0 8px 30px rgba(40,38,34,.25);
+  }
+  .mbox::before {
+    content: ""; position: absolute; top: -9px; left: 50%; width: 70px; height: 20px;
+    transform: translateX(-50%) rotate(-2deg);
+    background: rgba(244, 226, 138, .85);
+    box-shadow: 0 1px 2px rgba(51,49,44,.08);
   }
   @keyframes rise { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
   .mbox .stamp {
-    display: inline-block; font-size: 18px; font-weight: bold; color: #e8703a;
-    border: 3px solid #e8703a; border-radius: 10px; padding: 4px 14px;
-    transform: rotate(-6deg); margin-bottom: 12px; letter-spacing: 2px;
+    display: inline-block; font-size: 18px; font-weight: 600; color: var(--accent);
+    border: 2.5px solid var(--accent); border-radius: 8px; padding: 4px 14px;
+    transform: rotate(-5deg); margin-bottom: 12px; letter-spacing: 2px;
   }
-  .mbox .mq { font-size: 14px; color: #8a7a64; line-height: 1.6; margin-bottom: 18px; }
+  .mbox .mq { font-size: 14px; color: #77746b; line-height: 1.7; margin-bottom: 18px; }
+  /* 入力欄は下線だけ（手帳の罫線） */
   .mnote {
-    width: 100%; border: 1.5px solid #ddcfb4; border-radius: 10px;
-    padding: 11px 12px; font-family: inherit; font-size: 15px;
-    background: #fff; color: inherit; margin-bottom: 4px;
+    width: 100%; border: none; border-bottom: 1.5px solid #c3bfb4; border-radius: 0;
+    padding: 10px 4px; font-family: inherit; font-size: 16px; text-align: center;
+    background: transparent; color: inherit; margin-bottom: 4px;
   }
-  .mnote::placeholder { color: #c9baa0; }
-  .note-ng { border-color: #d95b43 !important; animation: shake .3s; }
-  .note-errmsg { font-size: 12px; color: #d95b43; text-align: center; margin: -4px 0 0; }
+  .mnote:focus { outline: none; border-bottom-color: var(--ink); }
+  .mnote::placeholder { color: #c3bfb4; }
+  .note-ng { border-bottom-color: var(--bad) !important; animation: shake .3s; }
+  .note-errmsg { font-size: 12px; color: var(--bad); text-align: center; margin: -4px 0 0; }
   @keyframes shake {
     0%, 100% { transform: none; }
     25% { transform: translateX(-6px); }
     75% { transform: translateX(6px); }
   }
-  .enote { font-size: 13px; color: #8a7a64; margin-top: 6px; }
+  .enote { font-size: 13px; color: #77746b; margin-top: 6px; }
   .mbox button {
-    display: block; width: 100%; border: none; border-radius: 12px; font-family: inherit;
-    font-size: 15px; font-weight: bold; padding: 13px 0; cursor: pointer; margin-top: 10px;
+    display: block; width: 100%; border: none; border-radius: 8px; font-family: inherit;
+    font-size: 15px; font-weight: 600; padding: 13px 0; cursor: pointer; margin-top: 10px;
   }
-  .m-plain { background: #e8703a; color: #fff; box-shadow: 0 2px 0 #c05a2b; letter-spacing: 2px; }
+  .m-plain { background: var(--ink); color: var(--paper); letter-spacing: 4px; text-indent: 4px; }
+  .m-plain:active { transform: translateY(1px); opacity: .85; }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <h1>よりみちクエスト</h1>
+    <!-- ロゴは Bradley Hand Bold をアウトライン化したSVG（全環境で同一表示） -->
+    <h1 aria-label="Whim"><svg viewBox="19 -745 2734 800" xmlns="http://www.w3.org/2000/svg"><path d="M988 -453Q988 -443 981 -432Q975 -417 975 -408Q975 -407 954 -363L943 -340L934 -324V-319L891 -266L883 -245L862 -222L847 -189L832 -184L827 -176Q819 -172 815 -162L806 -141L795 -132L791 -123L766 -92L760 -74L747 -59V-45L738 -30L745 4Q739 23 711 31Q703 35 691 35L665 24L650 -17L626 -54L625 -78L608 -92L596 -118Q589 -135 577 -157Q576 -170 566 -181L555 -197L552 -214L542 -221L534 -263L515 -299L517 -305Q514 -311 509 -318L506 -330Q497 -321 471 -296Q467 -281 442 -271L443 -275L432 -266Q429 -265 425 -264L413 -252Q406 -242 390 -230L369 -205L343 -166L325 -153Q323 -151 317 -141Q314 -128 302 -118L304 -107L296 -102L291 -87L285 -80L269 -50L278 -42L275 -24L278 -19Q276 -18 271 -14V-9Q271 22 238 22Q224 22 210 10L181 -30L175 -43L146 -90L135 -129L116 -164L113 -185L102 -206L91 -245V-256L64 -335L66 -342L63 -345L54 -371V-390L50 -425L39 -438L54 -476V-478Q62 -508 85 -508Q92 -508 111 -502Q136 -480 136 -448V-444L140 -439L133 -419V-408L144 -331L140 -325L146 -322L155 -305L166 -244L171 -233L178 -201L188 -197V-177L195 -164L196 -152L200 -150L206 -125L210 -124L214 -117Q218 -105 220 -104V-105L229 -126L238 -137L246 -154L253 -162Q254 -165 262 -181L276 -190L279 -205L303 -227L311 -247L326 -252L327 -255L329 -259Q336 -274 346 -276L361 -286L368 -294L371 -304Q393 -311 400 -335L419 -337L427 -363H438L446 -379L460 -380V-394L473 -410L478 -438Q485 -443 498 -452L499 -446L513 -465H538L556 -447L572 -440L575 -415L573 -390L575 -366L601 -306L599 -294L606 -282L609 -270Q619 -256 630 -207L643 -184L645 -171L655 -162L674 -119Q675 -116 683 -105L690 -109Q696 -121 703 -128L715 -134L719 -143L723 -159L744 -182Q741 -182 741 -183Q744 -186 756 -190L766 -204L775 -219L801 -245L823 -281L838 -301L850 -326L866 -343L878 -364L889 -390L883 -398L895 -421Q897 -426 901 -434V-442Q895 -457 895 -470V-476L900 -484L909 -495L912 -508Q924 -525 941 -525Q955 -525 968 -512L988 -492L986 -463Q988 -460 988 -453Z M1451 -10Q1451 30 1408 30Q1387 30 1377 13Q1367 -1 1360 -40V-54Q1363 -59 1363 -64Q1363 -66 1362 -69L1348 -90L1358 -109L1354 -130L1358 -142V-155L1360 -167L1356 -185L1360 -194V-227L1361 -270L1354 -303L1358 -315L1351 -340L1343 -333L1321 -324L1291 -286L1279 -287L1261 -258L1258 -246L1247 -241L1236 -224L1231 -213L1220 -178L1202 -156L1198 -142L1188 -134L1184 -110L1164 -92L1161 -55H1152L1149 -49L1131 -18L1114 0L1099 20L1083 15H1070L1058 -1L1047 -37L1045 -90L1042 -107L1045 -127L1043 -174L1051 -176L1056 -245L1060 -258L1057 -279L1062 -282L1066 -314L1070 -325L1066 -339L1069 -344L1067 -347L1070 -375L1062 -382L1069 -396L1068 -425L1057 -454L1065 -463L1058 -490V-506L1055 -513L1050 -545L1045 -560L1030 -589L1041 -603L1051 -620H1060Q1082 -620 1093 -604L1107 -593L1113 -575L1128 -562L1125 -548L1132 -527L1131 -525L1133 -523L1132 -490L1133 -446L1140 -418L1135 -406L1137 -389L1132 -375L1135 -351L1130 -331L1132 -327L1130 -266L1133 -252L1127 -245L1124 -212L1120 -197L1124 -170L1120 -162L1119 -142Q1130 -145 1130 -154L1138 -162L1145 -175L1147 -194L1158 -210L1164 -230L1179 -246L1183 -265L1193 -266V-275L1194 -287L1206 -294V-302L1216 -304L1218 -320L1217 -328L1235 -336L1240 -340L1238 -350L1247 -353L1254 -370H1266L1277 -377Q1277 -384 1278 -387L1289 -392Q1307 -407 1323 -410V-412Q1349 -425 1359 -425Q1374 -425 1386 -411Q1397 -407 1400 -396L1409 -390L1412 -376L1427 -353V-273L1426 -238L1430 -229V-155L1427 -142V-122L1430 -100L1426 -81Q1430 -66 1431 -56L1442 -45V-37L1446 -34Q1451 -17 1451 -10Z M1731 -676Q1731 -664 1715 -654V-652Q1696 -629 1682 -626L1667 -608L1657 -595L1634 -589L1624 -575L1608 -567L1582 -544L1566 -559L1569 -584L1580 -602Q1581 -616 1596 -626V-630L1602 -634L1603 -649L1619 -653V-662L1631 -664Q1635 -684 1648 -693L1651 -695L1657 -701L1665 -725Q1731 -709 1731 -676ZM1833 -146Q1833 -123 1825 -117L1820 -113L1815 -99L1799 -94Q1792 -78 1778 -69L1769 -66L1756 -52L1744 -49Q1737 -31 1715 -30Q1713 -27 1706 -18Q1691 -8 1675 -6L1670 -5L1663 4H1643L1627 16L1586 -14L1567 -53L1566 -102L1562 -114L1574 -202L1578 -206Q1575 -221 1575 -235Q1575 -244 1581 -272L1586 -295Q1584 -301 1578 -308L1584 -327L1586 -350L1588 -353Q1584 -362 1583 -373Q1584 -375 1585.0 -378.5Q1586 -382 1586 -384Q1583 -393 1583 -401Q1583 -425 1610 -423L1622 -422Q1634 -428 1637 -428Q1657 -428 1664 -406V-402Q1668 -390 1668 -379Q1668 -370 1666 -366L1659 -316L1666 -302Q1666 -284 1654 -270L1658 -258L1645 -220Q1643 -195 1640 -182V-157L1634 -143L1635 -133L1633 -110L1635 -92L1650 -80L1662 -82L1664 -85L1672 -84L1685 -88L1696 -99L1700 -105L1707 -106L1709 -111L1712 -115L1718 -111L1728 -121L1734 -120L1736 -127H1738L1741 -135L1750 -139L1769 -148Q1792 -164 1814 -164H1818Q1829 -157 1833 -146Z M2733 -118Q2728 -104 2720 -97Q2717 -86 2711 -81Q2706 -71 2699 -67L2695 -61Q2691 -55 2684 -55L2679 -45H2672L2667 -36L2659 -33L2653 -26L2648 -22Q2633 -22 2623 -13Q2610 -8 2596 -8Q2582 -8 2568 -15Q2552 -16 2552 -20L2538 -22L2535 -25L2529 -37L2518 -46Q2507 -59 2506 -70Q2499 -80 2492 -108L2482 -124V-133L2475 -163L2476 -175L2470 -206L2473 -231L2468 -238L2458 -213Q2439 -192 2435.5 -187.5Q2432 -183 2427 -183Q2426 -183 2423 -184L2417 -173Q2416 -172 2416 -169Q2416 -163 2423 -162Q2421 -160 2413 -148Q2409 -140 2406 -137L2403 -142L2401 -128Q2388 -118 2383 -98Q2373 -85 2352 -61L2339 -47Q2334 -47 2334 -45V-43Q2328 -29 2313 -21L2301 -6H2294L2270 3Q2240 1 2233 -23L2232 -34L2226 -47V-58L2218 -87V-96L2212 -106L2216 -137Q2215 -142 2215 -151Q2215 -159 2216 -162L2215 -168V-172L2210 -183L2218 -202Q2216 -210 2212 -228L2215 -237L2218 -266L2210 -287L2212 -304L2209 -313Q2208 -316 2202 -332L2195 -328L2182 -312L2170 -301L2146 -271L2144 -260L2127 -242L2120 -228L2113 -220Q2110 -198 2091 -189L2090 -175Q2084 -169 2077.5 -159.0Q2071 -149 2068.5 -147.5Q2066 -146 2060 -141L2048 -124Q2048 -107 2035 -100V-94Q2029 -86 2019 -78L2018 -80L2015 -66Q2007 -66 2000 -47L1997 -43Q1996 -27 1980 -19L1966 -6Q1950 2 1945 2Q1919 2 1911 -41L1907 -63Q1906 -65 1906 -69Q1906 -76 1909 -83L1904 -102L1906 -118L1904 -134Q1906 -155 1911 -160Q1908 -181 1908 -184V-202Q1912 -209 1918 -220L1912 -226Q1910 -234 1910 -235Q1910 -242 1922 -259L1915 -278L1919 -290L1913 -319L1915 -333L1910 -355L1911 -370L1902 -388Q1922 -427 1945 -427Q1957 -427 1968 -417L1970 -407Q1987 -398 1987 -380Q1987 -383 1984 -359L1980 -360L1989 -343L1983 -335L1982 -331L1988 -285L1986 -246L1983 -239L1987 -223Q1990 -219 1990 -213Q1990 -205 1982 -197Q1982 -183 1977 -174L1980 -144V-132L1981 -134L1987 -143L2001 -168H2004Q2010 -168 2017 -187L2024 -206Q2026 -212 2039 -225L2043 -243L2055 -261L2059 -275Q2064 -278 2069 -282L2070 -285Q2073 -289 2092 -306L2098 -309L2100 -319L2105 -322Q2110 -343 2130 -350L2126 -353L2130 -355Q2129 -356 2129 -358Q2129 -360 2131 -364L2147 -371L2150 -387H2161Q2161 -388 2163 -394L2183 -410Q2197 -414 2202 -414Q2214 -414 2235 -407L2245 -393L2249 -391L2254 -379L2268 -360V-347L2277 -337V-322Q2288 -298 2288 -281L2285 -269L2291 -252L2280 -241L2284 -219L2283 -213L2282 -208Q2280 -198 2280 -193Q2280 -188 2285 -173L2282 -162L2285 -148L2282 -145Q2284 -131 2288 -98L2287 -94L2319 -129L2329 -148Q2333 -154 2342 -167V-169Q2346 -185 2355 -191Q2355 -197 2365 -206L2373 -211Q2377 -228 2394 -239L2399 -253L2408 -265L2418 -275Q2427 -282 2432 -297L2440 -309L2444 -324L2455 -330L2466 -344L2477 -368Q2473 -368 2473 -370Q2473 -370 2475 -374L2482 -380L2490 -396Q2507 -402 2509 -402Q2509 -402 2513 -400L2531 -399L2547 -392L2561 -376L2564 -362L2563 -351L2558 -347L2547 -326L2543 -303Q2548 -298 2548 -285Q2544 -280 2544 -272L2540 -264Q2542 -259 2542 -248Q2542 -239 2541 -235L2537 -230L2541 -223L2534 -214Q2540 -214 2540 -201Q2542 -195 2542 -193Q2542 -190 2540 -186Q2542 -176 2542 -167V-165Q2542 -163 2555 -124L2557 -114L2568 -102L2574 -88L2580 -85L2584 -79L2589 -78L2598 -76L2603 -77H2606Q2616 -77 2630 -85Q2634 -95 2651 -106Q2652 -111 2663 -125L2680 -137L2686 -149Q2694 -154 2703 -154Q2714 -154 2727 -148Q2733 -138 2733 -118Z" fill="currentColor"/></svg></h1>
+    <p class="tagline">人生に、意味のない用事を。</p>
   </header>
 
   <section id="view-today">
@@ -168,17 +240,24 @@
       <div class="card back b1"></div>
       <div class="card" id="card"></div>
     </div>
-    <p class="hint">← よこに スワイプしても べつのクエスト →</p>
+    <p class="hint">← よこに スワイプしても スキップ →</p>
   </section>
 
   <section id="view-album" hidden>
-    <div class="album-head">つうさん <b id="totalcount">0</b> クエスト</div>
+    <div class="album-head">つうさん <b id="totalcount">0</b> ようじ</div>
     <div id="albumlist"></div>
+    <button id="resetall">はじめから</button>
   </section>
 
   <nav>
-    <button id="tab-today" class="active"><span class="ico">📜</span>きょうのクエスト</button>
-    <button id="tab-album"><span class="ico">📖</span>おもいでアルバム</button>
+    <button id="tab-today" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="3.5" width="13" height="17" rx="2"/><path d="M9.5 9.5h.01M14.5 9.5h.01"/><path d="M9.2 13.5c1.5 1.3 4.1 1.3 5.6 0"/></svg>
+      きょうのようじ
+    </button>
+    <button id="tab-album">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5C6.5 4 9.5 4 12 5.5c2.5-1.5 5.5-1.5 8 0V19c-2.5-1.5-5.5-1.5-8 0-2.5-1.5-5.5-1.5-8 0z"/><path d="M12 5.5V19"/></svg>
+      おもいでアルバム<span id="albumcount"></span>
+    </button>
   </nav>
 </div>
 
@@ -212,6 +291,8 @@ const CATS = {
   tanken:   { name: 'たんけん',  emoji: '🧭', color: '#5f9ea0' },
   yattemiru:{ name: 'やってみる', emoji: '🎲', color: '#c7a24b' },
 };
+// スパイス申告（持っているものを選ぶと、スパイス系チェーンの買い物ステップがスキップされる）
+const SPICES = ['八角', 'シナモン', '花椒', 'クローブ', 'フェンネル', 'クミン', 'コリアンダーパウダー', 'ごま', 'カルダモン', 'パプリカパウダー', 'オレガノ', 'タイム', 'ローズマリー'];
 const QUESTS = [
   { id: 1,  cat: 'hirou',    place: 'そと',    text: 'すべすべの石をひとつ拾う' },
   { id: 2,  cat: 'hirou',    place: 'そと',    text: 'きれいな落ち葉を1枚拾う' },
@@ -258,6 +339,7 @@ const QUESTS = [
   { id: 34, cat: 'yattemiru', place: 'どこでも', text: 'かばんのポケットの中身を出す' },
   { id: 35, cat: 'yattemiru', place: 'どこでも', text: '立ち上がってかかと上げを10回する' },
   { id: 36, cat: 'yattemiru', place: 'いえ',    text: '口の中で舌回しをする' },
+  { id: 40, cat: 'miru',     place: 'いえ',    text: '家にあるスパイスを、ぜんぶ教えて', multi: SPICES },
 ];
 
 // ---- チェーンクエスト（つづきもの） ----
@@ -266,9 +348,9 @@ const QUESTS = [
 // have: true → 買い物系。「もう家にある」ボタンが出る（押すと完了扱い）
 const CHAINS = [
   { id: 'shoyu', steps: [
-    { text: '八角を買ってくる', have: true },
-    { text: 'シナモンを買ってくる', have: true },
-    { text: '花椒を買ってくる', have: true },
+    { text: '八角を買ってくる', have: true, item: '八角' },
+    { text: 'シナモンを買ってくる', have: true, item: 'シナモン' },
+    { text: '花椒を買ってくる', have: true, item: '花椒' },
     { text: '八角とシナモンと花椒を瓶に入れて、醤油で漬ける' },
     { text: '前につけた台湾風醤油を料理にかけてみる' },
   ]},
@@ -288,9 +370,9 @@ const CHAINS = [
     { text: '好きな7文字を考える', input: '好きな7文字' },
   ]},
   { id: 'dukkah', steps: [
-    { text: 'クミンを買ってくる', have: true },
-    { text: 'コリアンダーパウダーを買ってくる', have: true },
-    { text: 'ごまを買ってくる', have: true },
+    { text: 'クミンを買ってくる', have: true, item: 'クミン' },
+    { text: 'コリアンダーパウダーを買ってくる', have: true, item: 'コリアンダーパウダー' },
+    { text: 'ごまを買ってくる', have: true, item: 'ごま' },
     { text: 'クミンとコリアンダーとごまを、ぜんぶ混ぜる' },
     { text: 'パンにオリーブオイルをつけて、この前混ぜたスパイス（デュカといいます）をつけて食べる' },
   ]},
@@ -299,34 +381,36 @@ const CHAINS = [
     { text: 'ミントティーに砂糖をどっさり入れて飲む（モロッコの飲み方です）' },
   ]},
   { id: 'gokou', steps: [
-    { text: '八角を買ってくる', have: true },
-    { text: 'シナモンを買ってくる', have: true },
-    { text: '花椒を買ってくる', have: true },
-    { text: 'クローブを買ってくる', have: true },
-    { text: 'フェンネルを買ってくる', have: true },
+    { text: '八角を買ってくる', have: true, item: '八角' },
+    { text: 'シナモンを買ってくる', have: true, item: 'シナモン' },
+    { text: '花椒を買ってくる', have: true, item: '花椒' },
+    { text: 'クローブを買ってくる', have: true, item: 'クローブ' },
+    { text: 'フェンネルを買ってくる', have: true, item: 'フェンネル' },
     { text: '八角・シナモン・花椒・クローブ・フェンネルを、ぜんぶ砕いて混ぜる',
       finale: { stamp: '五香粉、完成。',
         text: 'ゆで卵にひとふり。唐揚げの下味にひとつまみ。チャーハンの仕上げにさらり。どれも気楽にどうぞ。' } },
   ]},
   { id: 'houjichai', steps: [
     { text: 'ほうじ茶を買ってくる', have: true },
-    { text: 'シナモンを買ってくる', have: true },
-    { text: 'カルダモンを買ってくる', have: true },
+    { text: 'シナモンを買ってくる', have: true, item: 'シナモン' },
+    { text: 'カルダモンを買ってくる', have: true, item: 'カルダモン' },
     { text: 'ほうじ茶をシナモン・カルダモン・牛乳・砂糖と煮て、ほうじ茶チャイにして飲む' },
   ]},
   { id: 'tacos', steps: [
-    { text: 'クミンを買ってくる', have: true },
-    { text: 'パプリカパウダーを買ってくる', have: true },
-    { text: 'オレガノを買ってくる', have: true },
+    { text: 'クミンを買ってくる', have: true, item: 'クミン' },
+    { text: 'パプリカパウダーを買ってくる', have: true, item: 'パプリカパウダー' },
+    { text: 'オレガノを買ってくる', have: true, item: 'オレガノ' },
     { text: 'クミンとパプリカパウダーとオレガノを混ぜて、ポテトにかけて食べる（タコススパイスです）' },
   ]},
   { id: 'provence', steps: [
-    { text: 'タイムを買ってくる', have: true },
-    { text: 'ローズマリーを買ってくる', have: true },
-    { text: 'オレガノを買ってくる', have: true },
+    { text: 'タイムを買ってくる', have: true, item: 'タイム' },
+    { text: 'ローズマリーを買ってくる', have: true, item: 'ローズマリー' },
+    { text: 'オレガノを買ってくる', have: true, item: 'オレガノ' },
     { text: 'タイムとローズマリーとオレガノを混ぜて、ポテトにかけて食べる（エルブ・ド・プロヴァンスです）' },
   ]},
 ];
+// スパイスを使うチェーン。スパイス申告（id:40）が終わるまでデッキに入らない
+const SPICE_CHAINS = ['shoyu', 'dukkah', 'gokou', 'houjichai', 'tacos', 'provence'];
 const CHAIN_STEPS = {};
 CHAINS.forEach(ch => ch.steps.forEach((st, i) => {
   CHAIN_STEPS[`${ch.id}-${i}`] = {
@@ -358,10 +442,12 @@ function mulberry32(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function dailyOrder(day, chains) {
+function dailyOrder(day, chains, spices) {
   const rand = mulberry32(hashSeed(day));
-  const ids = QUESTS.map(q => q.id);
+  // スパイス申告は一度答えたらもう出ない
+  const ids = QUESTS.filter(q => !(q.multi && spices)).map(q => q.id);
   CHAINS.forEach(ch => {
+    if (SPICE_CHAINS.includes(ch.id) && !spices) return;   // 申告まで封印
     const step = (chains && chains[ch.id]) || 0;
     if (step < ch.steps.length) ids.push(`${ch.id}-${step}`);
   });
@@ -376,14 +462,21 @@ let S = load();
 function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
-  if (!s) s = { day: '', order: [], slot: null, skipped: [], doneToday: [], chains: {}, cool: {}, log: [] };
+  if (!s) s = { day: '', order: [], slot: null, skipped: [], doneToday: [], chains: {}, cool: {}, spices: null, log: [] };
   if (!s.chains) s.chains = {};
   if (!s.cool) s.cool = {};
+  if (s.spices === undefined) s.spices = null;       // null = まだ申告していない
   if (Array.isArray(s.slots)) { s.slot = s.slots[0] ?? null; delete s.slots; }  // 旧3枠形式からの移行
   s.order = (s.order || []).filter(id => byId(id));  // 廃止クエストを掃除
+  // スパイス申告前は、スパイス系チェーンのカードをデッキから外しておく
+  const gated = id => {
+    const q = CHAIN_STEPS[id];
+    return !s.spices && q && SPICE_CHAINS.includes(q.chainId);
+  };
+  s.order = s.order.filter(id => !gated(id));
   if (s.day !== todayStr()) {
     s.day = todayStr();
-    s.order = dailyOrder(s.day, s.chains);
+    s.order = dailyOrder(s.day, s.chains, s.spices);
     s.skipped = [];
     s.doneToday = [];
     s.slot = null;
@@ -391,19 +484,21 @@ function load() {
   } else {
     // 同日中のアップデート対応: 新しく追加されたクエストをデッキに紛れ込ませる
     QUESTS.forEach(q => {
+      if (q.multi && s.spices) return;               // 申告済みならスパイス申告は出さない
       if (!s.order.includes(q.id)) {
         s.order.splice(Math.floor(Math.random() * (s.order.length + 1)), 0, q.id);
       }
     });
     // 同日中のアップデート対応: 進行中チェーンの現在ステップがデッキに無ければ紛れ込ませる
     CHAINS.forEach(ch => {
+      if (SPICE_CHAINS.includes(ch.id) && !s.spices) return;
       const step = s.chains[ch.id] || 0;
       const stepId = `${ch.id}-${step}`;
       if (step < ch.steps.length && !s.order.includes(stepId)) {
         s.order.splice(Math.floor(Math.random() * (s.order.length + 1)), 0, stepId);
       }
     });
-    if (!byId(s.slot)) { s.slot = null; s.slot = draw(s); }
+    if (!byId(s.slot) || gated(s.slot)) { s.slot = null; s.slot = draw(s); }
   }
   // 占いカードはセッションの1枚目には出さない（デッキには残す）
   const first = byId(s.slot);
@@ -453,20 +548,26 @@ const cardEl = $('#card');
 const stageEl = $('#stage');
 
 function cardHTML(q) {
-  const haveBtn = q.have ? '<button class="btn-have">🏠 もう家にある</button>' : '';
+  const haveBtn = q.have ? '<button class="btn-have">もう家にある</button>' : '';
   const noteInput = q.input ? `<input type="text" class="mnote card-note" placeholder="${q.input}">` : '';
+  const chips = q.multi
+    ? `<div class="chips">${q.multi.map(m => `<button class="chip">${m}</button>`).join('')}</div>`
+    : '';
   const mainBtns = q.choices
     ? q.choices.map((c, i) => `<button class="btn-done" data-choice="${i}">${c.label}</button>`).join('')
     : q.camera
-    ? '<button class="btn-done btn-camera">📷 しゃしんを撮る</button>'
+    ? '<button class="btn-done btn-camera">しゃしんを撮る</button>'
+    : (q.chainId === 'tanka' || q.multi)
+    ? '<button class="btn-done">きめた</button>'
     : '<button class="btn-done">やった</button>';
   return `
-    <p class="qtext">${q.text}</p>
+    <p class="qtext${q.multi ? ' small' : ''}">${q.text}</p>
+    ${chips}
     <div class="actions">
       ${noteInput}
       ${mainBtns}
       ${haveBtn}
-      <button class="btn-skip">🔄 べつのにする</button>
+      <button class="btn-skip">スキップ</button>
     </div>`;
 }
 
@@ -494,6 +595,27 @@ function swapCard(outX, outY, rot) {
   }, 230);
 }
 
+// 持っているスパイスの「買ってくる」ステップを読み飛ばして、チェーンの現在位置を進める
+function ownedSkip(s, chainId) {
+  const ch = CHAINS.find(c => c.id === chainId);
+  let i = s.chains[chainId] || 0;
+  while (i < ch.steps.length && ch.steps[i].item && (s.spices || []).includes(ch.steps[i].item)) i++;
+  s.chains[chainId] = i;
+}
+
+// スパイス申告の完了時: 封印していたチェーンを、持ち物を反映した位置からデッキに混ぜる
+function unlockSpiceChains() {
+  SPICE_CHAINS.forEach(cid => {
+    ownedSkip(S, cid);
+    const step = S.chains[cid] || 0;
+    const ch = CHAINS.find(c => c.id === cid);
+    const stepId = `${cid}-${step}`;
+    if (step < ch.steps.length && !S.order.includes(stepId)) {
+      S.order.splice(Math.floor(Math.random() * (S.order.length + 1)), 0, stepId);
+    }
+  });
+}
+
 // カードを1枚消化するたびに、各チェーンのクールダウンを1減らす
 function tickCool(s) {
   Object.keys(s.cool).forEach(k => { if (s.cool[k] > 0) s.cool[k]--; });
@@ -511,11 +633,11 @@ function reroll(dir) {
 function burst() {
   const b = document.createElement('div');
   b.className = 'burst';
-  const emojis = ['🎉', '✨', '⭐', '🎊', '✨', '🌟'];
-  emojis.forEach((e, i) => {
+  const marks = ['✦', '✧', '＋', '✦', 'ﾟ', '✧'];
+  marks.forEach((e, i) => {
     const sp = document.createElement('span');
     sp.textContent = e;
-    const ang = (i / emojis.length) * Math.PI * 2;
+    const ang = (i / marks.length) * Math.PI * 2;
     sp.style.setProperty('--dx', `${Math.cos(ang) * 70}px`);
     sp.style.setProperty('--dy', `${Math.sin(ang) * 55 - 30}px`);
     b.appendChild(sp);
@@ -527,7 +649,10 @@ function burst() {
 // ---- 操作 ----
 cardEl.addEventListener('click', e => {
   if (animating) return;
-  if (e.target.closest('.btn-skip')) {
+  const chip = e.target.closest('.chip');
+  if (chip) {
+    chip.classList.toggle('on');
+  } else if (e.target.closest('.btn-skip')) {
     reroll(-1);
   } else if (e.target.closest('.btn-have')) {
     completeQuest();                     // 買わずに完了
@@ -538,6 +663,12 @@ cardEl.addEventListener('click', e => {
       const c = q.choices[Number(e.target.closest('.btn-done').dataset.choice)];
       pendingComplete = { note: c.result };
       showMsg('手相占い', c.result);
+    } else if (q.multi) {
+      // スパイス申告: 選んだものを保存して、封印していたチェーンを解放
+      const sel = [...cardEl.querySelectorAll('.chip.on')].map(b => b.textContent);
+      S.spices = sel;
+      unlockSpiceChains();
+      completeQuest({ note: sel.length ? sel.join('、') : 'ひとつもない' });
     } else if (q.camera) {
       $('#camerain').click();            // カメラ起動。撮れたら完了
     } else if (q.chainId === 'tanka') {
@@ -674,11 +805,14 @@ function completeQuest(opts = {}) {
   tickCool(S);
   const cq = byId(id);
   if (cq.chainId) {
-    // チェーンを1歩進め、次のステップをデッキのランダムな位置に紛れ込ませる
+    // チェーンを1歩進め（持っているスパイスの買い物は読み飛ばす）、
+    // 次のステップをデッキのランダムな位置に紛れ込ませる
     if ((S.chains[cq.chainId] || 0) === cq.stepIndex) {
       S.chains[cq.chainId] = cq.stepIndex + 1;
-      if (!cq.isLast) {
-        const nextId = `${cq.chainId}-${cq.stepIndex + 1}`;
+      ownedSkip(S, cq.chainId);
+      const nextStep = S.chains[cq.chainId];
+      if (nextStep < CHAINS.find(c => c.id === cq.chainId).steps.length) {
+        const nextId = `${cq.chainId}-${nextStep}`;
         S.order.splice(Math.floor(Math.random() * (S.order.length + 1)), 0, nextId);
         S.cool[cq.chainId] = 3;          // 次のステップは3枚はさむまで出さない
       }
@@ -727,13 +861,12 @@ function renderAlbum() {
       lastDate = dstr;
       const lb = document.createElement('div');
       lb.className = 'datelabel';
-      lb.textContent = `── ${dstr} ──`;
+      lb.textContent = dstr;
       list.appendChild(lb);
     }
-    const emoji = q.cat ? CATS[q.cat].emoji : '✨';
     const div = document.createElement('div');
     div.className = 'entry';
-    div.innerHTML = `<p class="etext">${emoji} ${q.text}</p><button class="btn-undo" data-index="${logIndex}">戻す</button>`;
+    div.innerHTML = `<p class="etext">${q.text}</p><button class="btn-undo" data-index="${logIndex}">戻す</button>`;
     if (entry.tanka) {
       const tp = document.createElement('div');
       tp.className = 'tanka';
@@ -767,13 +900,39 @@ function undoEntry(logIndex) {
   S.log.splice(logIndex, 1);
   const di = S.doneToday.indexOf(entry.id);
   if (di !== -1) S.doneToday.splice(di, 1);
+  if (q && q.multi) {
+    // スパイス申告の取り消し: 未申告に戻し、スパイス系チェーンを封印し直す
+    S.spices = null;
+    SPICE_CHAINS.forEach(cid => {
+      // 自動スキップぶんを取り消す。実際に完了したステップ（ログに残る）までは維持
+      let step = 0;
+      S.log.forEach(en => {
+        const st = CHAIN_STEPS[en.id];
+        if (st && st.chainId === cid) step = Math.max(step, st.stepIndex + 1);
+      });
+      S.chains[cid] = step;
+      S.order = S.order.filter(x => {
+        const st = CHAIN_STEPS[x];
+        return !(st && st.chainId === cid);
+      });
+    });
+    // 申告カードをデッキに戻す
+    if (!S.order.includes(q.id)) {
+      S.order.splice(Math.floor(Math.random() * (S.order.length + 1)), 0, q.id);
+    }
+    // 場に出ているカードが封印対象なら引き直す
+    const cur = CHAIN_STEPS[S.slot];
+    if (cur && SPICE_CHAINS.includes(cur.chainId)) { S.slot = draw(S); renderCard(); }
+  }
   if (q && q.chainId) {
     // 最新ステップの取り消しならチェーンを1歩巻き戻す
     if ((S.chains[q.chainId] || 0) === q.stepIndex + 1) {
       S.chains[q.chainId] = q.stepIndex;
       const nextId = `${q.chainId}-${q.stepIndex + 1}`;
       S.order = S.order.filter(x => x !== nextId);
-      if (!S.order.includes(entry.id)) {
+      // 申告前に封印されているチェーンのカードは、デッキには戻さない（進行位置だけ巻き戻す）
+      const sealed = !S.spices && SPICE_CHAINS.includes(q.chainId);
+      if (!sealed && !S.order.includes(entry.id)) {
         S.order.splice(Math.floor(Math.random() * (S.order.length + 1)), 0, entry.id);
       }
       // 巻き戻しで消したステップが場に出ていたら引き直す
@@ -795,6 +954,13 @@ document.querySelector('#albumlist').addEventListener('click', e => {
 });
 $('#lightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
 
+// はじめから（デバッグ用の全リセット）: 記録・申告・チェーン進行をすべて消してやり直す
+$('#resetall').addEventListener('click', () => {
+  if (!confirm('すべての記録を消して、はじめからにしますか？')) return;
+  localStorage.removeItem(KEY);
+  location.reload();
+});
+
 // ---- タブ ----
 function showTab(name) {
   $('#view-today').hidden = name !== 'today';
@@ -806,7 +972,7 @@ function showTab(name) {
 $('#tab-today').addEventListener('click', () => showTab('today'));
 $('#tab-album').addEventListener('click', () => showTab('album'));
 function updateBadge() {
-  $('#tab-album').innerHTML = `<span class="ico">📖</span>おもいでアルバム（${S.log.length}）`;
+  $('#albumcount').textContent = S.log.length ? `（${S.log.length}）` : '';
 }
 
 // ---- 起動 ----

@@ -2,8 +2,18 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Whim</title>
+<!-- PWA: favicon・ホーム画面追加用 -->
+<meta name="theme-color" content="#f4f3ee">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Whim">
 <!-- フォントのみ外部依存の例外（CLAUDE.md 技術方針参照）。オフライン時はシステムの手書き系に落ちる -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -979,6 +989,11 @@ function updateBadge() {
 save();
 renderCard();
 updateBadge();
+
+// PWA: オフライン用サービスワーカー（file:// で開いたときは登録しない）
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('./sw.js');
+}
 </script>
 </body>
 </html>
